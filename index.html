@@ -1,0 +1,259 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Skin Blink ETF</title>
+<style>
+  @font-face {
+    font-family: minecraft;
+    src: url("fonts/herobrine_minecraft.otf");
+    font-display: swap;
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    background: #292929;
+    color: #585858;
+    font-family: minecraft, sans-serif;
+  }
+
+  main {
+    width: 100%;
+    max-width: 480px;
+    padding: 24px;
+    background: #C1C1C1;
+    border: 1px solid #9F9F9F;
+  }
+
+  h1 {
+    margin: 0 0 8px;
+    font-size: 20px;
+	color: #303030;
+  }
+
+  p {
+    margin: 0 0 8px;
+  }
+
+  label {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 12px;
+    padding: 8px 12px;
+    background: #A5A5A5;
+    border: 1px solid #9B9B9B;
+    color: #303030;
+  }
+
+  canvas {
+    width: 32px;
+    height: 32px;
+    image-rendering: pixelated;
+  }
+
+  input {
+    display: none;
+  }
+
+  label span {
+    margin-left: auto;
+  }
+
+  button,
+  label span {
+    padding: 6px 12px;
+    border: none;
+    border-radius: 2px;
+    background: #372AAC;
+    color: #F2F2F2;
+    font: inherit;
+    cursor: pointer;
+  }
+
+  button {
+    width: 100%;
+    margin-top: 16px;
+    padding: 10px;
+  }
+
+  button:disabled {
+    opacity: 0.5;
+    cursor: default;
+  }
+
+  #message {
+    margin: 8px 0 0;
+  }
+</style>
+</head>
+<body>
+<main>
+<h1>Skin Blink ETF</h1>
+<p>Fusionne vos skins pour faire cligner les yeux avec le mod ETF.</p>
+<p>Créez un skin aux yeux ouverts, un skin aux yeux fermés. Le site fait le reste.</p>
+
+<label>
+Skin yeux ouverts
+<canvas width="64" height="64" id="preview-open"></canvas>
+<input type="file" accept="image/png" id="file-open">
+<span>Choisir</span>
+</label>
+<label>
+Skin yeux fermés
+<canvas width="64" height="64" id="preview-closed"></canvas>
+<input type="file" accept="image/png" id="file-closed">
+<span>Choisir</span>
+</label>
+
+<button id="button" disabled>Générer et télécharger mon skin qui cligne des yeux</button>
+<p id="message"></p>
+</main>
+
+<script>
+let skinOpen = null;
+let skinClosed = null;
+
+let button = document.getElementById("button");
+let message = document.getElementById("message");
+
+function loadSkin(skin) {
+  let input = document.getElementById("file-" + skin);
+  let preview = document.getElementById("preview-" + skin);
+  let previewCtx = preview.getContext("2d");
+
+  // clear the previous skin
+  previewCtx.clearRect(0, 0, 64, 64);
+  saveSkin(skin, null);
+
+  let file = input.files[0];
+  if (file == undefined) {
+    return;
+  }
+
+  let image = new Image();
+  image.src = URL.createObjectURL(file);
+
+  image.onload = function () {
+    if (image.width != 64 || image.height != 64) {
+      message.textContent = "La taille du skin est invalide.";
+      return;
+    }
+    message.textContent = "";
+    previewCtx.drawImage(image, 0, 0);
+    let pixels = previewCtx.getImageData(0, 0, 64, 64);
+    saveSkin(skin, pixels);
+  };
+
+  image.onerror = function () {
+    message.textContent = "Le skin est invalide.";
+  };
+}
+
+function saveSkin(skin, pixels) {
+  if (skin == "open") {
+    skinOpen = pixels;
+  }
+  if (skin == "closed") {
+    skinClosed = pixels;
+  }
+
+  if (skinOpen != null && skinClosed != null) {
+    button.disabled = false;
+  } else {
+    button.disabled = true;
+  }
+}
+
+document.getElementById("file-open").onchange = function () { loadSkin("open"); };
+document.getElementById("file-closed").onchange = function () { loadSkin("closed"); };
+
+
+function setPixel(image, x, y, red, green, blue) {
+  let index = (y * 64 + x) * 4;
+  image.data[index] = red;
+  image.data[index + 1] = green;
+  image.data[index + 2] = blue;
+  image.data[index + 3] = 255;
+}
+
+function setBlackIfEmpty(image, x, y) {
+  let index = (y * 64 + x) * 4;
+  let alpha = image.data[index + 3];
+  if (alpha == 0) {
+    setPixel(image, x, y, 0, 0, 0);
+  }
+}
+
+function copySquare(source, destination, fromX, fromY, toX, toY) {
+  for (let y = 0; y < 8; y++) {
+    for (let x = 0; x < 8; x++) {
+      let sourceIndex = ((fromY + y) * 64 + (fromX + x)) * 4;
+      let destinationIndex = ((toY + y) * 64 + (toX + x)) * 4;
+      destination.data[destinationIndex] = source.data[sourceIndex];
+      destination.data[destinationIndex + 1] = source.data[sourceIndex + 1];
+      destination.data[destinationIndex + 2] = source.data[sourceIndex + 2];
+      destination.data[destinationIndex + 3] = source.data[sourceIndex + 3];
+    }
+  }
+}
+
+
+button.onclick = function () {
+  let canvas = document.createElement("canvas");
+  canvas.width = 64;
+  canvas.height = 64;
+  let ctx = canvas.getContext("2d");
+  ctx.putImageData(skinOpen, 0, 0);
+  let result = ctx.getImageData(0, 0, 64, 64);
+
+  //ETF marker made by hand. Without it, it doesnt work
+  // line by line
+  setPixel(result, 0, 16, 127, 0, 0); // dark red
+  setPixel(result, 1, 16, 255, 0, 0); // red
+  setPixel(result, 2, 16, 0, 255, 0); // green
+  setPixel(result, 3, 16, 0, 127, 0); // dark green
+
+  setPixel(result, 0, 17, 255, 0, 0); // red
+  setBlackIfEmpty(result, 1, 17); // black (no option), unless already exists
+  setBlackIfEmpty(result, 2, 17); // black (no option), unless already exists
+  setPixel(result, 3, 17, 0, 255, 0); // green
+
+  setPixel(result, 0, 18, 0, 0, 255); // blue
+  setBlackIfEmpty(result, 1, 18); // black (no option), unless already exists
+  setBlackIfEmpty(result, 2, 18); // black (no option), unless already exists
+  setPixel(result, 3, 18, 255, 255, 255); // white
+
+  setPixel(result, 0, 19, 0, 0, 127); // dark blue
+  setPixel(result, 1, 19, 0, 0, 255); // blue
+  setPixel(result, 2, 19, 255, 255, 255); // white
+  setPixel(result, 3, 19, 127, 127, 127); // grey
+
+  // blink choice, pink = whole face and 1 frame
+  setPixel(result, 52, 16, 255, 0, 255);
+
+  // copy the closed-eyes face
+  copySquare(skinClosed, result, 8, 8, 0, 0);
+  copySquare(skinClosed, result, 40, 8, 32, 0);
+
+  ctx.putImageData(result, 0, 0);
+  let link = document.createElement("a");
+  link.href = canvas.toDataURL("image/png");
+  link.download = "skin_blink.png";
+  link.click();
+
+  message.textContent = "Skin généré !";
+};
+</script>
+</body>
+</html>
