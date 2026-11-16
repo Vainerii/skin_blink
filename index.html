@@ -19,6 +19,7 @@
     margin: 0;
     min-height: 100vh;
     display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
     padding: 16px;
@@ -95,6 +96,16 @@
   #message {
     margin: 8px 0 0;
   }
+
+  #legal {
+    margin-top: 12px;
+    font-size: 12px;
+    color: #9F9F9F;
+  }
+
+  #legal:hover {
+    color: #C1C1C1;
+  }
 </style>
 </head>
 <body>
@@ -119,6 +130,7 @@ Skin yeux fermés
 <button id="button" disabled>Générer et télécharger mon skin qui cligne des yeux</button>
 <p id="message"></p>
 </main>
+<a href="mentions.html" id="legal">Mentions légales</a>
 
 <script>
 let skinOpen = null;
